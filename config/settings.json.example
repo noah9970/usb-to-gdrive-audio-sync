@@ -1,0 +1,26 @@
+{
+  "usb_identifier": "AUDIO_USB",
+  "gdrive_folder_id": "YOUR_GOOGLE_DRIVE_FOLDER_ID",
+  "audio_extensions": [
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".aac",
+    ".flac",
+    ".ogg"
+  ],
+  "max_file_size_mb": 500,
+  "parallel_uploads": 5,
+  "retry_attempts": 3,
+  "retry_delay_seconds": 10,
+  "log_level": "INFO",
+  "exclude_folders": [
+    ".Spotlight-V100",
+    ".Trashes",
+    "System Volume Information",
+    "$RECYCLE.BIN"
+  ],
+  "preserve_folder_structure": true,
+  "skip_duplicates": true,
+  "notification_enabled": true
+}
