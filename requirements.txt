@@ -1,0 +1,27 @@
+# Core dependencies
+watchdog==3.0.0           # USB monitoring
+google-api-python-client==2.100.0  # Google Drive API
+google-auth==2.23.2       # Google authentication
+google-auth-oauthlib==1.0.0  # OAuth library
+google-auth-httplib2==0.1.1  # HTTP library for Google auth
+
+# File handling
+pyobjc-framework-DiskArbitration==9.2  # macOS disk arbitration framework
+pyobjc-framework-FSEvents==9.2  # macOS file system events
+
+# Database and logging
+sqlalchemy==2.0.20        # Database ORM for sync history
+python-dotenv==1.0.0       # Environment variable management
+
+# Utilities
+tqdm==4.66.1              # Progress bars
+colorlog==6.7.0           # Colored logging
+schedule==1.2.0           # Task scheduling
+psutil==5.9.5             # System and process utilities
+
+# Development dependencies
+pytest==7.4.2             # Testing framework
+pytest-cov==4.1.0         # Test coverage
+black==23.9.1             # Code formatter
+flake8==6.1.0             # Linter
+mypy==1.5.1               # Type checking
