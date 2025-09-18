@@ -10,6 +10,10 @@ USBメモリからGoogle Driveへの自動音声データ同期システム
 - macOS (MacBook Air)
 - Python 3.9+
 
+**開発環境**:
+- Claude Desktop (全ての開発作業はClaude Desktopチャット内で完結)
+- GitHub連携による継続的な開発
+
 ### 2. 機能要件
 
 #### 2.1 主要機能
@@ -98,7 +102,7 @@ usb-to-gdrive-audio-sync/
 
 ### 6. 開発フェーズ
 
-#### Phase 1: 基本機能実装
+#### Phase 1: 基本機能実装 ← 現在
 - [ ] プロジェクト初期設定
 - [ ] USB検出機能の実装
 - [ ] ファイルフィルタリング機能
@@ -123,68 +127,82 @@ usb-to-gdrive-audio-sync/
 - [ ] 統合テスト
 - [ ] パフォーマンス最適化
 
-### 7. 必要な準備
-
-1. **Google Cloud Console設定**
-   - Google Drive APIの有効化
-   - OAuth 2.0クライアントIDの作成
-   - credentials.jsonのダウンロード
-
-2. **Python環境**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-3. **システム権限**
-   - ディスクアクセス権限の付与
-   - 自動起動の設定（LaunchAgent）
-
-### 8. 使用方法
-
-```bash
-# 初回セットアップ
-./setup.sh
-
-# 手動実行
-python src/main.py
-
-# デーモンとして実行
-launchctl load ~/Library/LaunchAgents/com.user.usb-gdrive-sync.plist
-```
-
-### 9. トラブルシューティング
-
-- **USBが検出されない**: システム環境設定でディスクアクセス権限を確認
-- **Google Drive認証エラー**: credentials.jsonの再取得と再認証
-- **同期が遅い**: 並列アップロード数の調整（settings.json）
-
-### 10. 今後の拡張予定
-
-- [ ] 複数のUSBメモリ対応
-- [ ] 双方向同期機能
-- [ ] Web UIダッシュボード
-- [ ] スマートフォン通知連携
-- [ ] 音声ファイルの自動変換機能
-
 ---
 
-## 🚀 開発開始時の確認事項
+## 🚀 Claude Desktopでの開発手順
 
-新しいチャットセッションで開発を始める際は、必ず以下を確認してください：
+### 新しいチャットセッションで開発を続ける際の手順：
 
-1. **このREADMEの要件定義を読み込む**
-2. **現在の開発フェーズを確認**
-3. **最新のコード状態を確認**
-4. **未解決のIssueを確認**
-
-```bash
-# 開発開始時のコマンド
-git pull origin main
-cat README.md  # 要件確認
-git status     # 現在の状態確認
+#### 1. 開発開始の宣言
+チャットで以下のように伝えてください：
 ```
+「usb-to-gdrive-audio-syncプロジェクトの開発を続けます。
+READMEを確認して、現在のフェーズから開発を進めてください。」
+```
+
+#### 2. Claudeが自動的に行うこと
+- GitHubリポジトリの最新状態を確認
+- README.mdの要件定義を読み込み
+- 現在の開発フェーズを確認
+- 必要なファイルの作成・更新をGitHub API経由で直接実行
+
+#### 3. 開発の進め方
+- 各フェーズの作業はClaude Desktopチャット内で完結
+- コードの作成・修正はGitHub APIで直接リポジトリに反映
+- テスト用のローカル実行が必要な場合は、コードをコピーして使用
+
+### 現在の開発状態
+
+#### ✅ 完了済み
+- リポジトリ作成
+- 要件定義書作成
+- 基本的なプロジェクト構造の設定
+- requirements.txt作成
+- .gitignore設定
+- 設定ファイルサンプル作成
+
+#### 🔄 次のタスク (Phase 1)
+1. **USB監視モジュール (usb_monitor.py) の実装**
+   - macOSのディスク監視機能を使用
+   - USBメモリの接続/切断検出
+   - 特定のUSBメモリの識別
+
+2. **ファイル処理モジュール (file_handler.py) の実装**
+   - 音声ファイルのフィルタリング
+   - ファイルサイズチェック
+   - ファイルパスの管理
+
+3. **ログ管理ユーティリティ (utils/logger.py) の実装**
+   - ログファイルの作成と管理
+   - エラーログの記録
+   - デバッグ情報の出力
+
+### 重要な注意事項
+
+#### Google Drive API設定（ユーザー側で必要な作業）
+1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
+2. 新規プロジェクトを作成
+3. Google Drive APIを有効化
+4. OAuth 2.0クライアントIDを作成
+5. credentials.jsonをダウンロード
+6. ダウンロードしたファイルを`config/credentials/`フォルダに配置
+
+#### ローカルでのテスト実行
+開発したコードをローカルでテストする場合：
+1. GitHubからコードをダウンロード
+2. Python仮想環境をセットアップ
+3. 依存関係をインストール
+4. 設定ファイルを編集
+5. テスト実行
+
+### 開発履歴
+
+| 日付 | フェーズ | 実装内容 | ステータス |
+|------|----------|----------|------------|
+| 2025-09-15 | 初期設定 | リポジトリ作成、要件定義 | ✅ 完了 |
+| - | Phase 1 | USB検出機能 | 🔄 次のタスク |
+
+---
 
 ## 📝 コミットメッセージ規約
 
@@ -200,5 +218,7 @@ git status     # 現在の状態確認
 問題が発生した場合は、GitHubのIssueに報告してください。
 
 ---
+
+**リポジトリURL**: https://github.com/noah9970/usb-to-gdrive-audio-sync
 
 最終更新日: 2025-09-15
