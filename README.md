@@ -1,6 +1,12 @@
 # USB to Google Drive Audio Sync System
 USBメモリからGoogle Driveへの自動音声データ同期システム
 
+## ⚠️ 重要：開発方法について
+**このプロジェクトはClaude Desktop + GitHubで開発されています。**
+**開発を始める前に必ず [CLAUDE_INSTRUCTIONS.md](./CLAUDE_INSTRUCTIONS.md) を確認してください。**
+
+---
+
 ## 📋 要件定義書
 
 ### 1. システム概要
@@ -13,6 +19,7 @@ USBメモリからGoogle Driveへの自動音声データ同期システム
 **開発環境**:
 - Claude Desktop (全ての開発作業はClaude Desktopチャット内で完結)
 - GitHub連携による継続的な開発
+- ローカル環境は使用しない
 
 ### 2. 機能要件
 
@@ -67,6 +74,7 @@ USBメモリからGoogle Driveへの自動音声データ同期システム
 
 ```
 usb-to-gdrive-audio-sync/
+├── CLAUDE_INSTRUCTIONS.md  # ⚠️ Claude開発ガイドライン（必読）
 ├── README.md               # 要件定義書（このファイル）
 ├── requirements.txt        # Python依存パッケージ
 ├── config/
@@ -103,7 +111,8 @@ usb-to-gdrive-audio-sync/
 ### 6. 開発フェーズ
 
 #### Phase 1: 基本機能実装 ← 現在
-- [ ] プロジェクト初期設定
+- [x] プロジェクト初期設定
+- [x] CLAUDE_INSTRUCTIONS.md作成
 - [ ] USB検出機能の実装
 - [ ] ファイルフィルタリング機能
 
@@ -131,37 +140,41 @@ usb-to-gdrive-audio-sync/
 
 ## 🚀 Claude Desktopでの開発手順
 
-### 新しいチャットセッションで開発を続ける際の手順：
+### 📢 新しいチャットセッションで開発を続ける際の魔法の言葉：
 
-#### 1. 開発開始の宣言
-チャットで以下のように伝えてください：
 ```
-「usb-to-gdrive-audio-syncプロジェクトの開発を続けます。
-READMEを確認して、現在のフェーズから開発を進めてください。」
+usb-to-gdrive-audio-syncプロジェクトの開発を続けます。
+CLAUDE_INSTRUCTIONS.mdとREADME.mdを確認して、
+現在のフェーズから開発を進めてください。
 ```
 
-#### 2. Claudeが自動的に行うこと
-- GitHubリポジトリの最新状態を確認
-- README.mdの要件定義を読み込み
-- 現在の開発フェーズを確認
-- 必要なファイルの作成・更新をGitHub API経由で直接実行
+### Claudeが自動的に行うこと
+1. **CLAUDE_INSTRUCTIONS.md**を最初に確認（開発ルール）
+2. **README.md**から現在の状態を確認
+3. GitHubリポジトリの最新状態を確認
+4. 現在の開発フェーズから作業を継続
+5. 必要なファイルの作成・更新をGitHub API経由で直接実行
 
-#### 3. 開発の進め方
-- 各フェーズの作業はClaude Desktopチャット内で完結
-- コードの作成・修正はGitHub APIで直接リポジトリに反映
-- テスト用のローカル実行が必要な場合は、コードをコピーして使用
+### 開発の特徴
+- ✅ 各フェーズの作業はClaude Desktopチャット内で完結
+- ✅ コードの作成・修正はGitHub APIで直接リポジトリに反映
+- ✅ ローカル環境は不要
+- ✅ 全ての記録はGitHubで永続的に管理
 
-### 現在の開発状態
+---
 
-#### ✅ 完了済み
+## 📊 現在の開発状態
+
+### ✅ 完了済み
 - リポジトリ作成
-- 要件定義書作成
+- 要件定義書作成（README.md）
+- Claude開発ガイドライン作成（CLAUDE_INSTRUCTIONS.md）
 - 基本的なプロジェクト構造の設定
 - requirements.txt作成
 - .gitignore設定
 - 設定ファイルサンプル作成
 
-#### 🔄 次のタスク (Phase 1)
+### 🔄 次のタスク (Phase 1)
 1. **USB監視モジュール (usb_monitor.py) の実装**
    - macOSのディスク監視機能を使用
    - USBメモリの接続/切断検出
@@ -177,30 +190,26 @@ READMEを確認して、現在のフェーズから開発を進めてくださ�
    - エラーログの記録
    - デバッグ情報の出力
 
-### 重要な注意事項
+---
 
-#### Google Drive API設定（ユーザー側で必要な作業）
+## 📝 開発履歴
+
+| 日付 | フェーズ | 実装内容 | ステータス |
+|------|----------|----------|------------|
+| 2025-09-19 | 初期設定 | リポジトリ作成、要件定義 | ✅ 完了 |
+| 2025-09-19 | 初期設定 | CLAUDE_INSTRUCTIONS.md作成 | ✅ 完了 |
+| - | Phase 1 | USB検出機能 | 🔄 次のタスク |
+
+---
+
+## 🔧 Google Drive API設定（ユーザー側で必要な作業）
+
 1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
 2. 新規プロジェクトを作成
 3. Google Drive APIを有効化
 4. OAuth 2.0クライアントIDを作成
 5. credentials.jsonをダウンロード
 6. ダウンロードしたファイルを`config/credentials/`フォルダに配置
-
-#### ローカルでのテスト実行
-開発したコードをローカルでテストする場合：
-1. GitHubからコードをダウンロード
-2. Python仮想環境をセットアップ
-3. 依存関係をインストール
-4. 設定ファイルを編集
-5. テスト実行
-
-### 開発履歴
-
-| 日付 | フェーズ | 実装内容 | ステータス |
-|------|----------|----------|------------|
-| 2025-09-15 | 初期設定 | リポジトリ作成、要件定義 | ✅ 完了 |
-| - | Phase 1 | USB検出機能 | 🔄 次のタスク |
 
 ---
 
@@ -213,6 +222,8 @@ READMEを確認して、現在のフェーズから開発を進めてくださ�
 - `refactor:` リファクタリング
 - `chore:` その他の変更
 
+---
+
 ## 📞 連絡先・サポート
 
 問題が発生した場合は、GitHubのIssueに報告してください。
@@ -221,4 +232,4 @@ READMEを確認して、現在のフェーズから開発を進めてくださ�
 
 **リポジトリURL**: https://github.com/noah9970/usb-to-gdrive-audio-sync
 
-最終更新日: 2025-09-15
+最終更新日: 2025-09-19
