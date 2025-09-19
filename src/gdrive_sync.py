@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Google Drive同期モジュール
+Google Drive同期モジュール（データベース連携版）
 
 このモジュールは Google Drive API との連携を担当し、
 音声ファイルのアップロード、フォルダ管理、認証処理を行います。
+SQLiteデータベースと連携して同期履歴管理と差分同期を実現します。
 
 主な機能:
 - OAuth 2.0認証
 - ファイル・フォルダの作成とアップロード
-- 重複チェック
+- データベースによる重複チェック
+- 差分同期機能
 - 並列アップロード処理
 - アップロード進捗管理
 """
@@ -33,10 +35,11 @@ from googleapiclient.http import MediaFileUpload, MediaInMemoryUpload
 
 # ローカルモジュール
 from utils.logger import Logger
+from utils.database import SyncDatabase
 
 
 class GoogleDriveSync:
-    """Google Drive同期クラス"""
+    """Google Drive同期クラス（データベース連携版）"""
     
     # Google Drive API のスコープ
     SCOPES = ['https://www.googleapis.com/auth/drive.file']
@@ -51,24 +54,30 @@ class GoogleDriveSync:
         '.ogg': 'audio/ogg'
     }
     
-    def __init__(self, config: Dict, logger: Logger):
+    def __init__(self, config: Dict, logger: Logger, database: Optional[SyncDatabase] = None):
         """
         初期化
         
         Args:
             config: 設定辞書
             logger: ログ管理オブジェクト
+            database: データベース管理オブジェクト（オプション）
         """
         self.config = config
         self.logger = logger
+        self.database = database or SyncDatabase(logger=logger)
         self.service = None
         self.credentials = None
+        
+        # 現在のセッションID
+        self.current_session_id = None
         
         # 設定から値を取得
         self.target_folder_id = config.get('gdrive_folder_id', 'root')
         self.parallel_uploads = config.get('parallel_uploads', 5)
         self.retry_attempts = config.get('retry_attempts', 3)
         self.chunk_size = config.get('upload_chunk_size_mb', 10) * 1024 * 1024
+        self.use_database = config.get('use_database', True)
         
         # 認証情報のパス
         self.credentials_path = Path('config/credentials/credentials.json')
@@ -79,6 +88,7 @@ class GoogleDriveSync:
             'total_files': 0,
             'uploaded_files': 0,
             'failed_files': 0,
+            'skipped_files': 0,
             'total_bytes': 0,
             'uploaded_bytes': 0
         }
@@ -129,6 +139,54 @@ class GoogleDriveSync:
         except Exception as e:
             self.logger.log_error(f"認証エラー: {e}")
             raise
+    
+    def start_sync_session(self, usb_path: str) -> str:
+        """
+        同期セッションを開始
+        
+        Args:
+            usb_path: USBメモリのパス
+        
+        Returns:
+            セッションID
+        """
+        if self.use_database:
+            self.current_session_id = self.database.create_session(usb_path)
+            self.logger.log_info(f"Sync session started: {self.current_session_id}")
+        else:
+            self.current_session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        return self.current_session_id
+    
+    def end_sync_session(self, success: bool = True, error: str = None):
+        """
+        同期セッションを終了
+        
+        Args:
+            success: 成功フラグ
+            error: エラーメッセージ
+        """
+        if self.use_database and self.current_session_id:
+            # データベースのセッション情報を更新
+            self.database.update_session(
+                self.current_session_id,
+                total_files=self.upload_stats['total_files'],
+                synced_files=self.upload_stats['uploaded_files'],
+                failed_files=self.upload_stats['failed_files'],
+                skipped_files=self.upload_stats['skipped_files'],
+                total_size_bytes=self.upload_stats['total_bytes'],
+                synced_size_bytes=self.upload_stats['uploaded_bytes']
+            )
+            
+            # セッション完了
+            self.database.complete_session(
+                self.current_session_id,
+                success=success,
+                error=error
+            )
+            
+        self.logger.log_info(f"Sync session ended: {self.current_session_id}")
+        self.current_session_id = None
     
     def check_connection(self) -> bool:
         """
@@ -220,7 +278,7 @@ class GoogleDriveSync:
     
     def check_file_exists(self, file_name: str, parent_id: str = None, file_hash: str = None) -> bool:
         """
-        ファイルの存在確認
+        ファイルの存在確認（データベースとGoogle Drive両方で確認）
         
         Args:
             file_name: ファイル名
@@ -233,8 +291,15 @@ class GoogleDriveSync:
         if parent_id is None:
             parent_id = self.target_folder_id
         
+        # データベースで確認（有効な場合）
+        if self.use_database and file_hash:
+            db_record = self.database.check_file_exists(file_hash, parent_id)
+            if db_record:
+                self.logger.log_info(f"ファイルは履歴に存在します: {file_name}")
+                return True
+        
+        # Google Drive API で確認
         try:
-            # ファイル名で検索
             query = f"name='{file_name}' and '{parent_id}' in parents and trashed=false"
             response = self.service.files().list(
                 q=query,
@@ -261,14 +326,15 @@ class GoogleDriveSync:
             return False
     
     def upload_file(self, local_path: str, parent_id: str = None, 
-                   preserve_path: bool = True) -> Optional[str]:
+                   preserve_path: bool = True, file_hash: str = None) -> Optional[str]:
         """
-        ファイルをGoogle Driveにアップロード
+        ファイルをGoogle Driveにアップロード（データベース記録付き）
         
         Args:
             local_path: ローカルファイルパス
             parent_id: 親フォルダのID
             preserve_path: ディレクトリ構造を保持するか
+            file_hash: ファイルのハッシュ値
         
         Returns:
             アップロードしたファイルのID、失敗時はNone
@@ -278,6 +344,10 @@ class GoogleDriveSync:
         
         local_path = Path(local_path)
         
+        # ファイルハッシュを計算（未提供の場合）
+        if not file_hash:
+            file_hash = self._calculate_file_hash(local_path)
+        
         try:
             # ファイルサイズチェック
             file_size = local_path.stat().st_size
@@ -285,6 +355,8 @@ class GoogleDriveSync:
             
             if file_size > max_size:
                 self.logger.log_warning(f"ファイルサイズが上限を超えています: {local_path.name}")
+                self._record_sync_result(local_path, None, parent_id, file_hash, 'failed', 
+                                        "File size exceeds limit")
                 return None
             
             # MIMEタイプの判定
@@ -299,7 +371,7 @@ class GoogleDriveSync:
                 # 親ディレクトリ構造を再現
                 folders = []
                 current = local_path.parent
-                while current.name:
+                while current.name and current.name not in ['/', 'Volumes']:
                     folders.append(current.name)
                     current = current.parent
                 
@@ -308,8 +380,11 @@ class GoogleDriveSync:
                     upload_parent_id = self.create_folder(folder_name, upload_parent_id)
             
             # 重複チェック
-            if self.check_file_exists(local_path.name, upload_parent_id):
+            if self.check_file_exists(local_path.name, upload_parent_id, file_hash):
                 self.logger.log_info(f"ファイルは既に存在します（スキップ）: {local_path.name}")
+                self.upload_stats['skipped_files'] += 1
+                self._record_sync_result(local_path, None, upload_parent_id, file_hash, 'skipped', 
+                                        "File already exists")
                 return None
             
             # ファイルメタデータ
@@ -332,7 +407,7 @@ class GoogleDriveSync:
             request = self.service.files().create(
                 body=file_metadata,
                 media_body=media,
-                fields='id'
+                fields='id, md5Checksum'
             )
             
             # プログレス表示付きアップロード
@@ -351,25 +426,60 @@ class GoogleDriveSync:
             self.upload_stats['uploaded_files'] += 1
             self.upload_stats['uploaded_bytes'] += file_size
             
+            # データベースに記録
+            self._record_sync_result(local_path, file_id, upload_parent_id, file_hash, 'success')
+            
             return file_id
             
         except Exception as e:
             self.logger.log_error(f"アップロードエラー ({local_path.name}): {e}")
             self.upload_stats['failed_files'] += 1
             
+            # データベースにエラーを記録
+            self._record_sync_result(local_path, None, parent_id, file_hash, 'failed', str(e))
+            
             # リトライロジック
             for attempt in range(1, self.retry_attempts):
                 try:
                     self.logger.log_info(f"リトライ {attempt}/{self.retry_attempts}: {local_path.name}")
-                    return self.upload_file(local_path, parent_id, preserve_path)
+                    return self.upload_file(str(local_path), parent_id, preserve_path, file_hash)
                 except:
                     continue
             
             return None
     
+    def _record_sync_result(self, local_path: Path, file_id: Optional[str], 
+                           folder_id: str, file_hash: str, status: str, 
+                           error: str = None):
+        """データベースに同期結果を記録"""
+        if not self.use_database or not self.current_session_id:
+            return
+        
+        file_info = {
+            'file_path': str(local_path),
+            'file_name': local_path.name,
+            'file_size': local_path.stat().st_size if local_path.exists() else 0,
+            'file_hash': file_hash,
+            'gdrive_file_id': file_id,
+            'gdrive_folder_id': folder_id,
+            'sync_status': status,
+            'error_message': error,
+            'last_modified': datetime.fromtimestamp(local_path.stat().st_mtime) if local_path.exists() else None
+        }
+        
+        self.database.record_file_sync(self.current_session_id, file_info)
+    
+    def _calculate_file_hash(self, file_path: Path) -> str:
+        """ファイルのハッシュ値を計算"""
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+    
     def upload_files_parallel(self, file_paths: List[str], parent_id: str = None) -> Dict[str, str]:
         """
-        複数ファイルを並列でアップロード
+        複数ファイルを並列でアップロード（差分同期対応）
         
         Args:
             file_paths: アップロードするファイルパスのリスト
@@ -383,9 +493,34 @@ class GoogleDriveSync:
         
         results = {}
         
+        # 差分同期: 同期が必要なファイルのみ選択
+        if self.use_database:
+            # ファイル情報を準備
+            file_infos = []
+            for file_path in file_paths:
+                path = Path(file_path)
+                if path.exists():
+                    file_hash = self._calculate_file_hash(path)
+                    file_infos.append({
+                        'path': file_path,
+                        'hash': file_hash,
+                        'name': path.name,
+                        'size': path.stat().st_size
+                    })
+            
+            # データベースで差分チェック
+            files_to_sync = self.database.get_files_to_sync("", file_infos)
+            file_paths = [f['path'] for f in files_to_sync]
+            
+            self.logger.log_info(f"差分同期: {len(file_paths)} / {len(file_infos)} ファイルが同期対象")
+        
         # 統計リセット
         self.upload_stats['total_files'] = len(file_paths)
-        self.upload_stats['total_bytes'] = sum(Path(p).stat().st_size for p in file_paths)
+        self.upload_stats['total_bytes'] = sum(Path(p).stat().st_size for p in file_paths if Path(p).exists())
+        
+        if not file_paths:
+            self.logger.log_info("同期するファイルがありません")
+            return results
         
         self.logger.log_info(f"並列アップロード開始: {len(file_paths)} ファイル")
         
@@ -414,15 +549,17 @@ class GoogleDriveSync:
     def _print_upload_summary(self) -> None:
         """アップロード統計サマリーを表示"""
         stats = self.upload_stats
-        success_rate = (stats['uploaded_files'] / stats['total_files'] * 100) if stats['total_files'] > 0 else 0
+        total = stats['total_files']
+        success_rate = (stats['uploaded_files'] / total * 100) if total > 0 else 0
         uploaded_mb = stats['uploaded_bytes'] / 1024 / 1024
         total_mb = stats['total_bytes'] / 1024 / 1024
         
         summary = f"""
         ====== アップロードサマリー ======
-        総ファイル数: {stats['total_files']}
+        総ファイル数: {total}
         成功: {stats['uploaded_files']}
         失敗: {stats['failed_files']}
+        スキップ: {stats['skipped_files']}
         成功率: {success_rate:.1f}%
         アップロード容量: {uploaded_mb:.1f} / {total_mb:.1f} MB
         ================================
@@ -487,3 +624,18 @@ class GoogleDriveSync:
         except Exception as e:
             self.logger.log_error(f"フォルダ情報取得エラー: {e}")
             return {}
+    
+    def get_sync_statistics(self) -> Dict:
+        """
+        同期統計情報を取得
+        
+        Returns:
+            統計情報の辞書
+        """
+        if self.use_database:
+            return self.database.get_sync_statistics()
+        else:
+            return {
+                'current_session': self.upload_stats,
+                'database_disabled': True
+            }
