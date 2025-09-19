@@ -19,6 +19,7 @@ sys.path.insert(0, str(project_root))
 
 from src.usb_monitor import USBMonitor
 from src.file_handler import FileHandler
+from src.gdrive_sync import GoogleDriveSync
 from src.utils.logger import LogManager, SyncStats
 
 
@@ -43,8 +44,17 @@ class AudioSyncSystem:
         self.usb_monitor = USBMonitor(config_path)
         self.file_handler = FileHandler(config_path)
         
-        # Google Drive同期モジュール（Phase 2で実装予定）
-        self.gdrive_sync = None
+        # Google Drive同期モジュールの初期化
+        try:
+            self.gdrive_sync = GoogleDriveSync(self.config, self.logger)
+            if self.gdrive_sync.check_connection():
+                self.logger.info("Google Drive connection established")
+            else:
+                self.logger.warning("Google Drive connection check failed")
+                self.gdrive_sync = None
+        except Exception as e:
+            self.logger.error(f"Failed to initialize Google Drive sync: {e}")
+            self.gdrive_sync = None
         
         # 統計情報
         self.stats = None
@@ -76,6 +86,7 @@ class AudioSyncSystem:
             ],
             "max_file_size_mb": 500,
             "parallel_uploads": 5,
+            "upload_chunk_size_mb": 10,
             "retry_attempts": 3,
             "retry_delay_seconds": 10,
             "log_level": "INFO",
@@ -106,6 +117,12 @@ class AudioSyncSystem:
         try:
             self.logger.info(f"Starting sync process for: {usb_path}")
             
+            # Google Drive が利用可能かチェック
+            if not self.gdrive_sync:
+                self.logger.error("Google Drive sync is not available")
+                self.logger.info("Please check credentials.json and authentication")
+                return
+            
             # 統計情報の初期化
             self.stats = SyncStats()
             self.stats.start()
@@ -128,6 +145,12 @@ class AudioSyncSystem:
             self.logger.info(f"Found {len(audio_files)} audio files "
                            f"(Total size: {LogManager.format_file_size(total_size)})")
             
+            # 同期用フォルダ構造を作成
+            sync_folder_id = self.gdrive_sync.create_sync_folder_structure()
+            
+            # アップロード用のファイルパスリストを作成
+            files_to_upload = []
+            
             # 各ファイルを処理
             for i, audio_file in enumerate(audio_files, 1):
                 if self.shutdown:
@@ -143,37 +166,41 @@ class AudioSyncSystem:
                 # ファイルの重複チェック
                 if self.config.get('skip_duplicates', True):
                     file_hash = self.file_handler.calculate_hash(file_path)
-                    # TODO: Google Drive上の重複チェック（Phase 2で実装）
-                    # if self.gdrive_sync and self.gdrive_sync.file_exists(file_hash):
-                    #     self.logger.info(f"Skipped (already exists): {file_name}")
-                    #     self.stats.add_skip(file_name, "Already exists")
-                    #     self.log_manager.log_sync_progress(
-                    #         session_file, file_name, "SKIPPED", "Already exists"
-                    #     )
-                    #     continue
+                    
+                    # Google Drive上の重複チェック
+                    if self.gdrive_sync.check_file_exists(file_name, sync_folder_id):
+                        self.logger.info(f"Skipped (already exists): {file_name}")
+                        self.stats.add_skip(file_name, "Already exists")
+                        self.log_manager.log_sync_progress(
+                            session_file, file_name, "SKIPPED", "Already exists"
+                        )
+                        continue
                 
-                # ファイルをアップロード（Phase 2で実装）
-                # TODO: Google Driveへのアップロード実装
-                # try:
-                #     if self.gdrive_sync:
-                #         self.gdrive_sync.upload_file(file_path, audio_file['relative_path'])
-                #     self.stats.add_success(file_name, file_size)
-                #     self.log_manager.log_sync_progress(session_file, file_name, "SUCCESS")
-                # except Exception as e:
-                #     self.logger.error(f"Failed to upload {file_name}: {e}")
-                #     self.stats.add_failure(file_name, str(e))
-                #     self.log_manager.log_sync_progress(
-                #         session_file, file_name, "FAILED", str(e)
-                #     )
+                # アップロードリストに追加
+                files_to_upload.append(file_path)
+            
+            # 並列アップロード実行
+            if files_to_upload:
+                self.logger.info(f"Starting parallel upload of {len(files_to_upload)} files...")
                 
-                # 仮の処理（実際のアップロードは Phase 2 で実装）
-                self.logger.info(f"Would upload: {file_name} ({LogManager.format_file_size(file_size)})")
-                self.stats.add_success(file_name, file_size)
-                self.log_manager.log_sync_progress(session_file, file_name, "SUCCESS")
+                # アップロード実行
+                results = self.gdrive_sync.upload_files_parallel(files_to_upload, sync_folder_id)
                 
-                # 進捗表示
-                progress = self.stats.progress_percentage
-                self.logger.info(f"Progress: {progress:.1f}%")
+                # 結果を処理
+                for file_path, file_id in results.items():
+                    file_name = os.path.basename(file_path)
+                    file_size = os.path.getsize(file_path)
+                    
+                    if file_id:
+                        self.stats.add_success(file_name, file_size)
+                        self.log_manager.log_sync_progress(
+                            session_file, file_name, "SUCCESS", f"ID: {file_id}"
+                        )
+                    else:
+                        self.stats.add_failure(file_name, "Upload failed")
+                        self.log_manager.log_sync_progress(
+                            session_file, file_name, "FAILED", "Upload failed"
+                        )
             
             # 統計情報を終了
             self.stats.end()
@@ -193,6 +220,12 @@ class AudioSyncSystem:
             # 通知を送信（設定が有効な場合）
             if self.config.get('notification_enabled', True):
                 self._send_notification()
+            
+            # Google Drive フォルダ情報を表示
+            if sync_folder_id:
+                folder_info = self.gdrive_sync.get_folder_info(sync_folder_id)
+                if folder_info:
+                    self.logger.info(f"Uploaded to: {folder_info.get('webViewLink', 'N/A')}")
             
         except Exception as e:
             self.logger.error(f"Sync process failed: {e}", exc_info=True)
@@ -321,6 +354,32 @@ class AudioSyncSystem:
         self.logger.info(f"Received signal {signum}")
         self.stop()
         sys.exit(0)
+    
+    def test_gdrive_connection(self):
+        """Google Drive接続をテスト"""
+        if not self.gdrive_sync:
+            self.logger.error("Google Drive sync not initialized")
+            return False
+        
+        self.logger.info("Testing Google Drive connection...")
+        
+        if self.gdrive_sync.check_connection():
+            # フォルダ情報を取得
+            folder_info = self.gdrive_sync.get_folder_info()
+            if folder_info:
+                self.logger.info(f"Target folder: {folder_info.get('name', 'Unknown')}")
+                self.logger.info(f"Folder ID: {folder_info.get('id', 'Unknown')}")
+                self.logger.info(f"Web View Link: {folder_info.get('webViewLink', 'N/A')}")
+            
+            # テストフォルダを作成
+            test_folder = self.gdrive_sync.create_folder("AudioSyncTest")
+            if test_folder:
+                self.logger.info(f"Test folder created successfully: {test_folder}")
+            
+            return True
+        else:
+            self.logger.error("Google Drive connection test failed")
+            return False
 
 
 def main():
@@ -348,6 +407,11 @@ def main():
         metavar='PATH',
         help='Manually sync files from specified path'
     )
+    parser.add_argument(
+        '--test-gdrive',
+        action='store_true',
+        help='Test Google Drive connection'
+    )
     
     args = parser.parse_args()
     
@@ -368,6 +432,11 @@ def main():
             else:
                 print("No target USB found")
                 
+        elif args.test_gdrive:
+            # Google Drive接続をテスト
+            success = system.test_gdrive_connection()
+            sys.exit(0 if success else 1)
+            
         elif args.sync:
             # 指定されたパスから手動同期
             system.sync_files(args.sync)
