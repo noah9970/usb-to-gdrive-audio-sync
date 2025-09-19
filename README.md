@@ -7,79 +7,75 @@ USBメモリからGoogle Driveへの自動音声データ同期システム
 
 ---
 
-## 📋 要件定義書
+## 🎯 プロジェクト概要
 
-### 1. システム概要
-**目的**: MacBook AirにUSBメモリを接続すると、USB内の新しい音声データを自動的に指定されたGoogle Driveフォルダに保存するシステム
+MacBook AirにUSBメモリを接続すると、USB内の新しい音声データを自動的に指定されたGoogle Driveフォルダに保存する完全自動化システムです。
 
-**対象環境**: 
-- macOS (MacBook Air)
-- Python 3.9+
+### 主な特徴
+- 🔌 **USBメモリの自動検出と同期**
+- 🎵 **音声ファイルの自動識別**（MP3, WAV, M4A, AAC, FLAC, OGG）
+- ☁️ **Google Driveへの自動アップロード**
+- 🔄 **差分同期**（変更されたファイルのみアップロード）
+- 📊 **SQLiteデータベースによる履歴管理**
+- 🚀 **macOS LaunchAgentによる自動起動**
+- 📈 **詳細な統計情報とログ記録**
 
-**開発環境**:
-- Claude Desktop (全ての開発作業はClaude Desktopチャット内で完結)
-- GitHub連携による継続的な開発
-- ローカル環境は使用しない
+---
 
-### 2. 機能要件
+## 🚀 クイックスタート
 
-#### 2.1 主要機能
-- [x] USBメモリの自動検出
-- [x] 音声ファイルの識別と抽出
-- [x] Google Drive APIとの連携
-- [x] 新規ファイルの判定と差分同期
-- [x] 同期履歴の管理
-- [x] エラーハンドリングとログ記録
+### 1. セットアップ実行
+```bash
+# リポジトリをクローン
+git clone https://github.com/noah9970/usb-to-gdrive-audio-sync.git
+cd usb-to-gdrive-audio-sync
 
-#### 2.2 詳細仕様
+# セットアップスクリプトを実行
+chmod +x setup.sh
+./setup.sh
+```
 
-##### USBメモリ検出
-- USBメモリの接続を自動検出
-- 特定のUSBメモリのみを対象とする（ボリューム名または識別子で判定）
-- 検出後、自動的に同期処理を開始
+### 2. Google Drive API設定
+1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
+2. 新規プロジェクトを作成
+3. Google Drive APIを有効化
+4. OAuth 2.0クライアントIDを作成（デスクトップアプリ）
+5. `credentials.json`をダウンロード
+6. `config/credentials/`に配置
 
-##### 音声ファイル処理
-- 対象フォーマット: `.mp3`, `.wav`, `.m4a`, `.aac`, `.flac`, `.ogg`
-- ファイルサイズ制限: 1ファイル最大500MB
-- フォルダ構造を維持して同期
+### 3. 設定ファイル編集
+```json
+// config/settings.json
+{
+  "usb_identifier": "AUDIO_USB",  // USBボリューム名
+  "gdrive_folder_id": "YOUR_FOLDER_ID",  // Google DriveフォルダID
+  // ...
+}
+```
 
-##### Google Drive同期
-- 指定フォルダへのアップロード
-- 重複チェック（ファイル名とハッシュ値）
-- アップロード進捗の表示
-- 同期完了通知
+### 4. 実行
+```bash
+# 手動実行
+python3 src/main.py
 
-##### 同期履歴管理
-- 同期日時の記録
-- 同期ファイルリストの保存
-- エラーログの記録
+# 自動起動を有効化
+launchctl load -w ~/Library/LaunchAgents/com.usb-gdrive-audio-sync.plist
+```
 
-### 3. 非機能要件
+---
 
-#### 3.1 パフォーマンス
-- 100MBのファイルを1分以内にアップロード
-- 同時に複数ファイルの並列処理（最大5ファイル）
-
-#### 3.2 信頼性
-- ネットワーク切断時の再試行機能
-- 部分的なアップロード失敗時の復旧機能
-- データの整合性チェック
-
-#### 3.3 セキュリティ
-- Google OAuth 2.0による認証
-- クレデンシャルの安全な保存
-- ログファイルの適切な権限設定
-
-### 4. システム構成
+## 📋 システム構成
 
 ```
 usb-to-gdrive-audio-sync/
-├── CLAUDE_INSTRUCTIONS.md  # ⚠️ Claude開発ガイドライン（必読）
-├── README.md               # 要件定義書（このファイル）
-├── requirements.txt        # Python依存パッケージ ✅
+├── CLAUDE_INSTRUCTIONS.md  # Claude開発ガイドライン
+├── README.md               # プロジェクトドキュメント
+├── requirements.txt        # Python依存パッケージ
+├── setup.sh               # セットアップスクリプト ✅
 ├── config/
-│   ├── settings.json      # 設定ファイル ✅
-│   └── credentials/       # Google API認証情報
+│   ├── settings.json      # システム設定
+│   ├── credentials/       # Google API認証情報
+│   └── sync_history.db    # 同期履歴データベース
 ├── src/
 │   ├── main.py           # メインプログラム ✅
 │   ├── usb_monitor.py    # USB監視モジュール ✅
@@ -87,217 +83,170 @@ usb-to-gdrive-audio-sync/
 │   ├── gdrive_sync.py    # Google Drive同期モジュール ✅
 │   └── utils/
 │       ├── logger.py     # ログ管理 ✅
-│       └── database.py   # 同期履歴DB管理（Phase 3）
-├── logs/                  # ログファイル保存先
-├── tests/                 # テストコード
-└── setup.sh              # セットアップスクリプト
+│       └── database.py   # データベース管理 ✅
+└── logs/                  # ログファイル保存先
 ```
-
-### 5. 設定項目
-
-#### config/settings.json
-```json
-{
-  "usb_identifier": "AUDIO_USB",
-  "gdrive_folder_id": "YOUR_FOLDER_ID",
-  "audio_extensions": [".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"],
-  "max_file_size_mb": 500,
-  "parallel_uploads": 5,
-  "upload_chunk_size_mb": 10,
-  "retry_attempts": 3,
-  "log_level": "INFO"
-}
-```
-
-### 6. 開発フェーズ
-
-#### Phase 1: 基本機能実装 ✅ 完了！
-- [x] プロジェクト初期設定
-- [x] CLAUDE_INSTRUCTIONS.md作成
-- [x] USB検出機能の実装
-- [x] ファイルフィルタリング機能
-- [x] ログ管理機能の実装
-- [x] メインプログラムの実装
-
-#### Phase 2: Google Drive連携 🚧 進行中
-- [x] Google Drive API設定
-- [x] OAuth認証実装
-- [x] ファイルアップロード機能
-- [x] 並列アップロード処理
-- [x] メインプログラムとの統合
-- [ ] テスト実行と動作確認
-
-#### Phase 3: 同期機能実装
-- [ ] 差分検出アルゴリズム
-- [ ] 同期履歴データベース（SQLite）
-- [ ] 重複チェック機能の強化
-- [ ] エラー処理とリトライ機能の強化
-
-#### Phase 4: 自動化とUI
-- [ ] LaunchAgent設定（自動起動）
-- [ ] システムトレイアプリケーション（オプション）
-- [ ] 進捗通知機能の改善
-
-#### Phase 5: テストと最適化
-- [ ] ユニットテスト作成
-- [ ] 統合テスト
-- [ ] パフォーマンス最適化
 
 ---
 
-## 🚀 使用方法
+## ✨ 主要機能
 
-### 初期設定
+### Phase 1: 基本機能 ✅
+- USBメモリの自動検出（macOS DiskArbitration API使用）
+- 音声ファイルの識別とフィルタリング
+- ログ管理とエラーハンドリング
+- メインプログラムフレームワーク
 
-1. **Python環境のセットアップ**
-```bash
-# 依存パッケージのインストール
-pip install -r requirements.txt
-```
+### Phase 2: Google Drive連携 ✅
+- OAuth 2.0認証フロー
+- チャンク分割アップロード（大容量ファイル対応）
+- 並列アップロード処理（最大5ファイル同時）
+- フォルダ構造の自動作成（年/月/日）
 
-2. **Google Cloud Console設定（必須）**
-   - [Google Cloud Console](https://console.cloud.google.com/)にアクセス
-   - 新規プロジェクトを作成
-   - Google Drive APIを有効化
-   - OAuth 2.0クライアントIDを作成（デスクトップアプリケーション）
-   - credentials.jsonをダウンロードし、`config/credentials/`に配置
+### Phase 3: 同期機能強化 ✅
+- **SQLiteデータベースによる履歴管理**
+- **MD5ハッシュによる重複検出**
+- **差分同期（変更ファイルのみアップロード）**
+- **統計情報の収集と分析**
+- **同期セッション管理**
 
-3. **設定ファイルの編集**
-```bash
-# config/settings.json を編集
-# gdrive_folder_id に Google Drive のフォルダIDを設定
-# usb_identifier に対象USBのボリューム名を設定
-```
+### Phase 4: 自動化 ✅
+- **LaunchAgent設定（macOS自動起動）**
+- **セットアップスクリプト作成**
+- **進捗通知機能（macOS通知）**
 
-### コマンドライン使用例
+---
+
+## 🛠️ コマンドライン使用方法
 
 ```bash
 # Google Drive接続テスト
-python src/main.py --test-gdrive
+python3 src/main.py --test-gdrive
 
-# 現在接続されているUSBをチェック
-python src/main.py --check
+# USB検出確認
+python3 src/main.py --check
 
-# 手動で特定のフォルダから同期
-python src/main.py --sync /Volumes/AUDIO_USB
+# 手動同期実行
+python3 src/main.py --sync /Volumes/AUDIO_USB
 
-# 通常モードで起動（USBの接続を監視）
-python src/main.py
+# バックグラウンド実行
+python3 src/main.py --daemon
 
-# デーモンモードで起動（バックグラウンド実行）
-python src/main.py --daemon
+# 統計情報表示
+python3 src/main.py --stats
+
+# データベースエクスポート
+python3 src/main.py --export-db output.json
 ```
 
 ---
 
-## 🎉 Phase 2 実装内容
+## 📊 Phase 3 実装詳細
 
-### Google Drive同期モジュール (gdrive_sync.py)
+### SQLiteデータベース構造
 
-1. **OAuth 2.0認証**
-   - 初回認証フローの実装
-   - トークンの自動更新機能
-   - 認証情報の安全な保存（pickle形式）
+#### 1. **sync_sessions テーブル**
+- セッションID、USB パス、開始/終了時刻
+- 同期ファイル数、成功/失敗/スキップ数
+- 合計サイズ、エラーメッセージ
 
-2. **ファイルアップロード機能**
-   - チャンク分割アップロード（大容量ファイル対応）
-   - MIMEタイプの自動判定
-   - アップロード進捗表示（20%ごと）
+#### 2. **file_sync_history テーブル**
+- ファイルパス、名前、サイズ、ハッシュ値
+- Google Drive ファイル/フォルダID
+- 同期ステータス、時刻、エラー情報
 
-3. **フォルダ管理**
-   - 階層フォルダ構造の自動作成
-   - 年/月/日付フォルダの自動生成
-   - ディレクトリ構造の保持オプション
+#### 3. **file_tracking テーブル**
+- ファイルの変更追跡
+- 最終更新日時、同期回数
+- 重複検出用ハッシュ値
 
-4. **並列処理**
-   - ThreadPoolExecutorによる並列アップロード
-   - 設定可能な並列数（デフォルト5）
-   - アップロード統計の収集と表示
+### 差分同期アルゴリズム
+1. ファイルのMD5ハッシュを計算
+2. データベースで既存レコードを確認
+3. 新規または変更ファイルのみアップロード
+4. 同期履歴を記録
 
-5. **エラーハンドリング**
-   - 自動リトライ機能（設定可能な回数）
-   - ネットワークエラー対応
-   - 詳細なエラーログ記録
-
-### メインプログラムの統合
-
-- Google Drive同期モジュールの自動初期化
-- 接続テストコマンド（--test-gdrive）
-- 同期プロセスへの完全統合
-- アップロード結果のWeb View Link表示
-
----
-
-## 📊 現在の開発状態
-
-### ✅ 完了済み
-- **Phase 1**: 基本機能実装（100%完了）
-  - USB監視モジュール
-  - ファイル処理モジュール
-  - ログ管理ユーティリティ
-  - メインプログラム基盤
-
-- **Phase 2**: Google Drive連携（90%完了）
-  - Google Drive API クライアント実装
-  - OAuth 2.0認証フロー
-  - ファイルアップロード機能
-  - 並列アップロード処理
-  - メインプログラムとの統合
-
-### 🔄 次のタスク
-- Google Drive APIの実環境テスト
-- Phase 3: 同期機能の強化（データベース連携）
-
----
-
-## 📝 開発履歴
-
-| 日付 | フェーズ | 実装内容 | ステータス |
-|------|----------|----------|------------|
-| 2025-09-19 | 初期設定 | リポジトリ作成、要件定義 | ✅ 完了 |
-| 2025-09-19 | 初期設定 | CLAUDE_INSTRUCTIONS.md作成 | ✅ 完了 |
-| 2025-09-19 | Phase 1 | USB監視モジュール実装 | ✅ 完了 |
-| 2025-09-19 | Phase 1 | ファイル処理モジュール実装 | ✅ 完了 |
-| 2025-09-19 | Phase 1 | ログ管理ユーティリティ実装 | ✅ 完了 |
-| 2025-09-19 | Phase 1 | メインプログラム実装 | ✅ 完了 |
-| 2025-09-19 | Phase 2 | Google Drive同期モジュール実装 | ✅ 完了 |
-| 2025-09-19 | Phase 2 | メインプログラムとGDrive統合 | ✅ 完了 |
-| - | Phase 3 | 同期機能強化 | 🔄 次のタスク |
+### 統計機能
+- 総同期ファイル数とサイズ
+- 日別・週別・月別統計
+- ファイルタイプ別集計
+- エラー分析とレポート
 
 ---
 
 ## 🔧 トラブルシューティング
 
-### Google Drive認証エラー
-```
+### よくある問題と解決方法
+
+#### 1. Google Drive認証エラー
+```bash
 FileNotFoundError: 認証情報ファイルが見つかりません
 ```
-→ `config/credentials/credentials.json` が存在することを確認
+**解決**: `config/credentials/credentials.json`を配置
 
-### USBが検出されない
-```
+#### 2. USBが検出されない
+```bash
 No target USB found
 ```
-→ `config/settings.json` の `usb_identifier` を確認
+**解決**: `config/settings.json`の`usb_identifier`を確認
 
-### アップロードエラー
-```
+#### 3. アップロード失敗
+```bash
 Failed to upload: [error message]
 ```
-→ ネットワーク接続を確認、Google Drive APIが有効化されているか確認
+**解決**: 
+- ネットワーク接続確認
+- Google Drive APIが有効化されているか確認
+- フォルダIDが正しいか確認
+
+#### 4. データベースエラー
+```bash
+sqlite3.OperationalError: database is locked
+```
+**解決**: 他のプロセスがデータベースを使用していないか確認
 
 ---
 
-## 📌 関連URL
+## 📈 開発履歴
+
+| 日付 | フェーズ | 実装内容 | ステータス |
+|------|----------|----------|------------|
+| 2025-09-19 | 初期設定 | リポジトリ作成、要件定義 | ✅ 完了 |
+| 2025-09-19 | Phase 1 | 基本機能実装 | ✅ 完了 |
+| 2025-09-19 | Phase 2 | Google Drive連携 | ✅ 完了 |
+| 2025-09-19 | Phase 3 | データベース連携・差分同期 | ✅ 完了 |
+| 2025-09-19 | Phase 4 | 自動化・セットアップスクリプト | ✅ 完了 |
+| - | Phase 5 | テストと最適化 | 📋 計画中 |
+
+---
+
+## 🎯 今後の改善計画
+
+### Phase 5: テストと最適化
+- [ ] ユニットテスト作成（pytest）
+- [ ] 統合テスト
+- [ ] パフォーマンス最適化
+- [ ] エラーリカバリー強化
+
+### 将来的な機能拡張
+- [ ] Web UIダッシュボード
+- [ ] 複数Google Driveアカウント対応
+- [ ] 動画ファイル対応
+- [ ] 圧縮・暗号化オプション
+- [ ] Slack/Discord通知連携
+
+---
+
+## 📌 関連リンク
 
 ### 開発リソース
-- リポジトリ: https://github.com/noah9970/usb-to-gdrive-audio-sync
-- テンプレート: https://github.com/noah9970/claude-github-dev-template
+- **リポジトリ**: https://github.com/noah9970/usb-to-gdrive-audio-sync
+- **テンプレート**: https://github.com/noah9970/claude-github-dev-template
 
 ### Google関連
-- Google Cloud Console: https://console.cloud.google.com/
-- Google Drive API Documentation: https://developers.google.com/drive/api/v3/about-sdk
-- OAuth 2.0 for Desktop Apps: https://developers.google.com/identity/protocols/oauth2/native-app
+- **Google Cloud Console**: https://console.cloud.google.com/
+- **Google Drive API**: https://developers.google.com/drive/api/v3/about-sdk
+- **OAuth 2.0**: https://developers.google.com/identity/protocols/oauth2/native-app
 
 ---
 
@@ -312,12 +261,17 @@ Failed to upload: [error message]
 
 ---
 
-## 📞 連絡先・サポート
+## 📄 ライセンス
 
-問題が発生した場合は、GitHubのIssueに報告してください。
+このプロジェクトはMITライセンスの下で公開されています。
 
 ---
 
-**リポジトリURL**: https://github.com/noah9970/usb-to-gdrive-audio-sync
+## 📞 サポート
 
-最終更新日: 2025-09-19
+問題が発生した場合は、[GitHubのIssue](https://github.com/noah9970/usb-to-gdrive-audio-sync/issues)に報告してください。
+
+---
+
+**最終更新日**: 2025-09-19  
+**バージョン**: 1.0.0 (Phase 4完了)
