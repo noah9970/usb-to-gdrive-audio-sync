@@ -26,8 +26,8 @@ USBメモリからGoogle Driveへの自動音声データ同期システム
 #### 2.1 主要機能
 - [x] USBメモリの自動検出
 - [x] 音声ファイルの識別と抽出
-- [ ] Google Drive APIとの連携
-- [ ] 新規ファイルの判定と差分同期
+- [x] Google Drive APIとの連携
+- [x] 新規ファイルの判定と差分同期
 - [x] 同期履歴の管理
 - [x] エラーハンドリングとログ記録
 
@@ -76,15 +76,15 @@ USBメモリからGoogle Driveへの自動音声データ同期システム
 usb-to-gdrive-audio-sync/
 ├── CLAUDE_INSTRUCTIONS.md  # ⚠️ Claude開発ガイドライン（必読）
 ├── README.md               # 要件定義書（このファイル）
-├── requirements.txt        # Python依存パッケージ
+├── requirements.txt        # Python依存パッケージ ✅
 ├── config/
-│   ├── settings.json      # 設定ファイル
+│   ├── settings.json      # 設定ファイル ✅
 │   └── credentials/       # Google API認証情報
 ├── src/
 │   ├── main.py           # メインプログラム ✅
 │   ├── usb_monitor.py    # USB監視モジュール ✅
 │   ├── file_handler.py   # ファイル処理モジュール ✅
-│   ├── gdrive_sync.py    # Google Drive同期モジュール（Phase 2）
+│   ├── gdrive_sync.py    # Google Drive同期モジュール ✅
 │   └── utils/
 │       ├── logger.py     # ログ管理 ✅
 │       └── database.py   # 同期履歴DB管理（Phase 3）
@@ -103,6 +103,7 @@ usb-to-gdrive-audio-sync/
   "audio_extensions": [".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"],
   "max_file_size_mb": 500,
   "parallel_uploads": 5,
+  "upload_chunk_size_mb": 10,
   "retry_attempts": 3,
   "log_level": "INFO"
 }
@@ -118,17 +119,19 @@ usb-to-gdrive-audio-sync/
 - [x] ログ管理機能の実装
 - [x] メインプログラムの実装
 
-#### Phase 2: Google Drive連携 ← 次のフェーズ
-- [ ] Google Drive API設定
-- [ ] OAuth認証実装
-- [ ] ファイルアップロード機能
-- [ ] 並列アップロード処理
+#### Phase 2: Google Drive連携 🚧 進行中
+- [x] Google Drive API設定
+- [x] OAuth認証実装
+- [x] ファイルアップロード機能
+- [x] 並列アップロード処理
+- [x] メインプログラムとの統合
+- [ ] テスト実行と動作確認
 
 #### Phase 3: 同期機能実装
 - [ ] 差分検出アルゴリズム
 - [ ] 同期履歴データベース（SQLite）
-- [ ] 重複チェック機能
-- [ ] エラー処理とリトライ機能
+- [ ] 重複チェック機能の強化
+- [ ] エラー処理とリトライ機能の強化
 
 #### Phase 4: 自動化とUI
 - [ ] LaunchAgent設定（自動起動）
@@ -142,89 +145,108 @@ usb-to-gdrive-audio-sync/
 
 ---
 
-## 🚀 Claude Desktopでの開発手順
+## 🚀 使用方法
 
-### 📢 新しいチャットセッションで開発を続ける際の魔法の言葉：
+### 初期設定
 
+1. **Python環境のセットアップ**
+```bash
+# 依存パッケージのインストール
+pip install -r requirements.txt
 ```
-usb-to-gdrive-audio-syncプロジェクトの開発を続けます。
-CLAUDE_INSTRUCTIONS.mdとREADME.mdを確認して、
-現在のフェーズから開発を進めてください。
+
+2. **Google Cloud Console設定（必須）**
+   - [Google Cloud Console](https://console.cloud.google.com/)にアクセス
+   - 新規プロジェクトを作成
+   - Google Drive APIを有効化
+   - OAuth 2.0クライアントIDを作成（デスクトップアプリケーション）
+   - credentials.jsonをダウンロードし、`config/credentials/`に配置
+
+3. **設定ファイルの編集**
+```bash
+# config/settings.json を編集
+# gdrive_folder_id に Google Drive のフォルダIDを設定
+# usb_identifier に対象USBのボリューム名を設定
 ```
 
-### Claudeが自動的に行うこと
-1. **CLAUDE_INSTRUCTIONS.md**を最初に確認（開発ルール）
-2. **README.md**から現在の状態を確認
-3. GitHubリポジトリの最新状態を確認
-4. 現在の開発フェーズから作業を継続
-5. 必要なファイルの作成・更新をGitHub API経由で直接実行
+### コマンドライン使用例
 
-### 開発の特徴
-- ✅ 各フェーズの作業はClaude Desktopチャット内で完結
-- ✅ コードの作成・修正はGitHub APIで直接リポジトリに反映
-- ✅ ローカル環境は不要
-- ✅ 全ての記録はGitHubで永続的に管理
+```bash
+# Google Drive接続テスト
+python src/main.py --test-gdrive
+
+# 現在接続されているUSBをチェック
+python src/main.py --check
+
+# 手動で特定のフォルダから同期
+python src/main.py --sync /Volumes/AUDIO_USB
+
+# 通常モードで起動（USBの接続を監視）
+python src/main.py
+
+# デーモンモードで起動（バックグラウンド実行）
+python src/main.py --daemon
+```
+
+---
+
+## 🎉 Phase 2 実装内容
+
+### Google Drive同期モジュール (gdrive_sync.py)
+
+1. **OAuth 2.0認証**
+   - 初回認証フローの実装
+   - トークンの自動更新機能
+   - 認証情報の安全な保存（pickle形式）
+
+2. **ファイルアップロード機能**
+   - チャンク分割アップロード（大容量ファイル対応）
+   - MIMEタイプの自動判定
+   - アップロード進捗表示（20%ごと）
+
+3. **フォルダ管理**
+   - 階層フォルダ構造の自動作成
+   - 年/月/日付フォルダの自動生成
+   - ディレクトリ構造の保持オプション
+
+4. **並列処理**
+   - ThreadPoolExecutorによる並列アップロード
+   - 設定可能な並列数（デフォルト5）
+   - アップロード統計の収集と表示
+
+5. **エラーハンドリング**
+   - 自動リトライ機能（設定可能な回数）
+   - ネットワークエラー対応
+   - 詳細なエラーログ記録
+
+### メインプログラムの統合
+
+- Google Drive同期モジュールの自動初期化
+- 接続テストコマンド（--test-gdrive）
+- 同期プロセスへの完全統合
+- アップロード結果のWeb View Link表示
 
 ---
 
 ## 📊 現在の開発状態
 
-### ✅ 完了済み (Phase 1)
-- リポジトリ作成
-- 要件定義書作成（README.md）
-- Claude開発ガイドライン作成（CLAUDE_INSTRUCTIONS.md）
-- 基本的なプロジェクト構造の設定
-- requirements.txt作成
-- .gitignore設定
-- 設定ファイルサンプル作成
-- **USB監視モジュール (usb_monitor.py)**
-- **ファイル処理モジュール (file_handler.py)**
-- **ログ管理ユーティリティ (utils/logger.py)**
-- **メインプログラム (main.py)**
+### ✅ 完了済み
+- **Phase 1**: 基本機能実装（100%完了）
+  - USB監視モジュール
+  - ファイル処理モジュール
+  - ログ管理ユーティリティ
+  - メインプログラム基盤
 
-### 🔄 次のタスク (Phase 2: Google Drive連携)
-1. **Google Drive API クライアント (gdrive_sync.py) の実装**
-   - OAuth 2.0認証フロー
-   - ファイルアップロード機能
-   - フォルダ作成・管理
+- **Phase 2**: Google Drive連携（90%完了）
+  - Google Drive API クライアント実装
+  - OAuth 2.0認証フロー
+  - ファイルアップロード機能
+  - 並列アップロード処理
+  - メインプログラムとの統合
 
-2. **認証管理機能**
-   - credentials.jsonの読み込み
-   - トークンの保存と更新
-   - 認証エラーハンドリング
-
-3. **アップロード機能の統合**
-   - main.pyとの統合
-   - 並列アップロード処理
-   - 進捗表示の改善
-
----
-
-## 🎉 Phase 1 完了内容
-
-### 実装済みモジュール
-
-1. **usb_monitor.py**
-   - macOS固有のAPIを使用したUSB検出
-   - フォールバック機能（ポーリング）
-   - カスタマイズ可能なUSB識別子
-
-2. **file_handler.py**
-   - 音声ファイルの再帰的スキャン
-   - 拡張子によるフィルタリング
-   - ファイルサイズチェック
-   - SHA-256ハッシュ計算
-
-3. **utils/logger.py**
-   - ローテーティングログファイル
-   - 同期セッション記録
-   - 統計情報の収集と表示
-
-4. **main.py**
-   - 全モジュールの統合
-   - コマンドラインインターフェース
-   - デーモンモード対応
-   - macOS通知機能
+### 🔄 次のタスク
+- Google Drive APIの実環境テスト
+- Phase 3: 同期機能の強化（データベース連携）
 
 ---
 
@@ -234,30 +256,35 @@ CLAUDE_INSTRUCTIONS.mdとREADME.mdを確認して、
 |------|----------|----------|------------|
 | 2025-09-19 | 初期設定 | リポジトリ作成、要件定義 | ✅ 完了 |
 | 2025-09-19 | 初期設定 | CLAUDE_INSTRUCTIONS.md作成 | ✅ 完了 |
-| 2025-09-19 | 初期設定 | URL管理ルール追加 | ✅ 完了 |
 | 2025-09-19 | Phase 1 | USB監視モジュール実装 | ✅ 完了 |
 | 2025-09-19 | Phase 1 | ファイル処理モジュール実装 | ✅ 完了 |
 | 2025-09-19 | Phase 1 | ログ管理ユーティリティ実装 | ✅ 完了 |
 | 2025-09-19 | Phase 1 | メインプログラム実装 | ✅ 完了 |
-| - | Phase 2 | Google Drive API連携 | 🔄 次のタスク |
+| 2025-09-19 | Phase 2 | Google Drive同期モジュール実装 | ✅ 完了 |
+| 2025-09-19 | Phase 2 | メインプログラムとGDrive統合 | ✅ 完了 |
+| - | Phase 3 | 同期機能強化 | 🔄 次のタスク |
 
 ---
 
-## 🔧 Google Drive API設定（ユーザー側で必要な作業）
+## 🔧 トラブルシューティング
 
-### Phase 2開始前に必要な準備：
+### Google Drive認証エラー
+```
+FileNotFoundError: 認証情報ファイルが見つかりません
+```
+→ `config/credentials/credentials.json` が存在することを確認
 
-1. **[Google Cloud Console](https://console.cloud.google.com/)にアクセス**
-2. **新規プロジェクトを作成**
-3. **Google Drive APIを有効化**
-   - APIとサービス → ライブラリ
-   - 「Google Drive API」を検索して有効化
-4. **OAuth 2.0クライアントIDを作成**
-   - APIとサービス → 認証情報
-   - 「認証情報を作成」→「OAuth クライアント ID」
-   - アプリケーションの種類: デスクトップ
-5. **credentials.jsonをダウンロード**
-6. **ダウンロードしたファイルを`config/credentials/`フォルダに配置**
+### USBが検出されない
+```
+No target USB found
+```
+→ `config/settings.json` の `usb_identifier` を確認
+
+### アップロードエラー
+```
+Failed to upload: [error message]
+```
+→ ネットワーク接続を確認、Google Drive APIが有効化されているか確認
 
 ---
 
@@ -267,9 +294,10 @@ CLAUDE_INSTRUCTIONS.mdとREADME.mdを確認して、
 - リポジトリ: https://github.com/noah9970/usb-to-gdrive-audio-sync
 - テンプレート: https://github.com/noah9970/claude-github-dev-template
 
-### Google関連（Phase 2で使用予定）
+### Google関連
 - Google Cloud Console: https://console.cloud.google.com/
 - Google Drive API Documentation: https://developers.google.com/drive/api/v3/about-sdk
+- OAuth 2.0 for Desktop Apps: https://developers.google.com/identity/protocols/oauth2/native-app
 
 ---
 
