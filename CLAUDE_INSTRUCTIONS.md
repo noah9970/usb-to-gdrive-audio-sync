@@ -188,24 +188,43 @@ github:get_file_contents(
 
 ---
 
-## 🔄 セッション開始テンプレート
+## 🔄 セッション開始の魔法の言葉
 
-ユーザーが新しいチャットで言うべきこと：
+### ユーザーが新しいチャットで言うべきこと：
+
+#### 標準バージョン（推奨）：
 ```
-usb-to-gdrive-audio-syncプロジェクトの開発を続けます。
-CLAUDE_INSTRUCTIONS.mdとREADME.mdを確認して、
-現在のフェーズから開発を進めてください。
+GitHubリポジトリ「usb-to-gdrive-audio-sync」の開発を続けます。
+このプロジェクトは完全にGitHub上で管理されており、GitHub APIを使って直接開発します。
+CLAUDE_INSTRUCTIONS.mdとREADME.mdを確認して、現在のフェーズから開発を進めてください。
 ```
 
-Claudeの応答：
+#### 短縮バージョン：
 ```
-承知しました。開発を続けます。
+GitHub上の「usb-to-gdrive-audio-sync」プロジェクトの開発を続けます。
+GitHub APIで直接開発します。CLAUDE_INSTRUCTIONS.mdとREADME.mdを確認してください。
+```
+
+#### Phase指定バージョン：
+```
+GitHubリポジトリ「usb-to-gdrive-audio-sync」のPhase 2 (Google Drive連携)を開発します。
+GitHub APIを使って直接ファイルを作成・編集してください。
+CLAUDE_INSTRUCTIONS.mdとREADME.mdを確認してから開始してください。
+```
+
+### Claudeの応答パターン：
+```
+承知しました。GitHubリポジトリ「usb-to-gdrive-audio-sync」の開発を続けます。
+
+GitHub APIを使って直接開発を進めます：
 1. CLAUDE_INSTRUCTIONS.mdを確認中...
 2. README.mdから現在の状態を確認中...
 3. 関連URLを確認中...
-4. 現在のフェーズ: [Phase X]
-5. 次のタスク: [タスク名]
-開発を開始します。
+4. 最新のコミットを確認中...
+5. 現在のフェーズ: [Phase X]
+6. 次のタスク: [タスク名]
+
+GitHub APIを使って開発を開始します。
 ```
 
 ---
@@ -225,12 +244,13 @@ Claudeの応答：
 **必ず最初に読み、この方法に従って開発を進めてください。**
 
 特に重要なのは：
-1. 全ての作業をGitHub API経由で行うこと
-2. システムに関連するURLを即座にREADMEに記録すること
-3. ローカル環境の使用を一切提案しないこと
+1. **全ての作業をGitHub API経由で行うこと**
+2. **システムに関連するURLを即座にREADMEに記録すること**
+3. **ローカル環境の使用を一切提案しないこと**
+4. **これはGitHub上のプロジェクトであることを常に認識すること**
 
 ---
 
 最終更新: 2025-09-19
-バージョン: 2.0.0
-主な更新: URL管理ルールを追加
+バージョン: 2.1.0
+主な更新: GitHub開発であることを明確にする魔法の言葉を追加
