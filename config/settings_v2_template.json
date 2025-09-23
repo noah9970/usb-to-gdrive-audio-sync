@@ -1,0 +1,49 @@
+{
+    "usb_identifier": "AUDIO_USB",
+    "gdrive_folder_id": "YOUR_GOOGLE_DRIVE_FOLDER_ID",
+    
+    "pipeline": {
+        "auto_process": true,
+        "parallel_processing": false,
+        "max_parallel_jobs": 2
+    },
+    
+    "local_storage": {
+        "base_dir": "~/AudioBackup",
+        "max_storage_gb": 100,
+        "retention_days": 30,
+        "auto_cleanup": true,
+        "verify_copy": true,
+        "temp_dir": "/tmp/audio_processing",
+        "processed_dir": "~/AudioBackup/processed"
+    },
+    
+    "audio_processing": {
+        "silence_threshold": -40,
+        "min_silence_duration": 2000,
+        "chunk_size": 600,
+        "target_sample_rate": 16000,
+        "target_bitrate": "64k",
+        "voice_activity_threshold": 5.0,
+        "enable_noise_reduction": false
+    },
+    
+    "google_drive": {
+        "chunk_size_mb": 10,
+        "max_retries": 3,
+        "parallel_uploads": 5,
+        "organize_by_date": true
+    },
+    
+    "monitoring": {
+        "enable_notifications": true,
+        "webhook_url": "",
+        "log_level": "INFO"
+    },
+    
+    "database": {
+        "path": "config/sync_history.db",
+        "backup_enabled": true,
+        "backup_interval_days": 7
+    }
+}
