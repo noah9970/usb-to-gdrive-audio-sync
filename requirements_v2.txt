@@ -1,0 +1,26 @@
+# 基本依存パッケージ
+google-api-python-client==2.97.0
+google-auth-httplib2==0.1.0
+google-auth-oauthlib==1.0.0
+pyobjc-framework-DiskArbitration==9.2  # macOS USB監視用
+pyobjc-framework-Cocoa==9.2  # macOS通知用
+watchdog==3.0.0
+psutil==5.9.5
+requests==2.31.0
+
+# 音声処理パッケージ（新規追加）
+librosa==0.10.1  # 音声処理ライブラリ
+soundfile==0.12.1  # 音声ファイルI/O
+pydub==0.25.1  # 音声フォーマット変換
+ffmpeg-python==0.2.0  # FFmpegバインディング
+numpy==1.24.3  # 数値計算
+scipy==1.10.1  # 科学計算
+
+# テスト用パッケージ
+pytest==7.4.0
+pytest-cov==4.1.0
+pytest-mock==3.11.1
+
+# オプション（高度な機能用）
+webrtcvad==2.0.10  # Voice Activity Detection
+noisereduce==3.0.0  # ノイズ除去
